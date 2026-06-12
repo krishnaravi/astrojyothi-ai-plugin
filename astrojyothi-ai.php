@@ -341,3 +341,5 @@ require_once plugin_dir_path(__FILE__) . 'upagraha-widget.php';
 require_once plugin_dir_path(__FILE__) . 'panchangam-light.php';
 
 require_once plugin_dir_path(__FILE__) . 'shadbala-page.php';
+
+require_once plugin_dir_path(__FILE__) . 'dasa-page.php';
