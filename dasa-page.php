@@ -444,16 +444,18 @@ dc.addEventListener('input',function(){
     .then(function(r){return r.json();}).then(function(data){
       ds.innerHTML='';if(!data.length){ds.style.display='none';return;}
       data.forEach(function(p){
-        var d=document.createElement('div');
-        d.textContent=p.display_name.split(',').slice(0,3).join(', ');
-        d.addEventListener('click',function(){
-          dc.value=d.textContent;
-          document.getElementById('dcity-h').value=d.textContent;
-          document.getElementById('dlat').value=parseFloat(p.lat).toFixed(4);
-          document.getElementById('dlng').value=parseFloat(p.lon).toFixed(4);
-          ds.style.display='none';
-        });
-        ds.appendChild(d);
+        (function(place){
+          var d=document.createElement('div');
+          d.textContent=place.display_name.split(',').slice(0,3).join(', ');
+          d.addEventListener('click',function(){
+            dc.value=d.textContent;
+            document.getElementById('dcity-h').value=d.textContent;
+            document.getElementById('dlat').value=parseFloat(place.lat).toFixed(4);
+            document.getElementById('dlng').value=parseFloat(place.lon).toFixed(4);
+            ds.style.display='none';
+          });
+          ds.appendChild(d);
+        })(p);
       });
       ds.style.display='block';
     });

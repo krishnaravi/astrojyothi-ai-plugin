@@ -14,7 +14,17 @@ function ajai_render_shadbala($atts) {
     $year  = isset($_GET['by']) ? intval($_GET['by'])   : '';
     $month = isset($_GET['bm']) ? intval($_GET['bm'])   : '';
     $day   = isset($_GET['bd']) ? intval($_GET['bd'])   : '';
-    $hours = isset($_GET['bh']) ? floatval($_GET['bh']) : '';
+    $bh_raw = isset($_GET['bh']) ? trim($_GET['bh']) : '';
+    $hours = '';
+    if($bh_raw !== ''){
+        if(strpos($bh_raw, '.') !== false){
+            $parts = explode('.', $bh_raw);
+            $h = intval($parts[0]);
+            $m_val = intval(str_pad($parts[1]??'0', 2, '0'));
+            if($m_val > 59){ $hours = floatval($bh_raw); }
+            else { $hours = $h + ($m_val / 60); }
+        } else { $hours = floatval($bh_raw); }
+    }
     $lat   = isset($_GET['lat'])? floatval($_GET['lat']): floatval($atts['lat']);
     $lng   = isset($_GET['lng'])? floatval($_GET['lng']): floatval($atts['lng']);
 
@@ -230,22 +240,11 @@ function ajai_render_shadbala($atts) {
 
   <!-- Time picker HH:MM AM/PM -->
   <div class="shad-form-group">
-    <label>நேரம் (IST)</label>
-    <div class="shad-time-row">
-      <input type="text" id="shad-hr" placeholder="07" maxlength="2" pattern="[0-9]*" inputmode="numeric" value="<?php
-        if($hours){ $h=floor($hours); $ampm=$h>=12?'PM':'AM'; $h12=$h%12; if($h12==0)$h12=12; echo $h12; }
-      ?>">
-      <span class="shad-time-sep">:</span>
-      <input type="text" id="shad-min" placeholder="30" maxlength="2" pattern="[0-9]*" inputmode="numeric" value="<?php
-        if($hours){ echo str_pad(round(($hours-floor($hours))*60),2,'0',STR_PAD_LEFT); }
-      ?>">
-      <select id="shad-ampm">
-        <option value="AM" <?php if($hours && floor($hours)<12) echo 'selected'; ?>>AM</option>
-        <option value="PM" <?php if($hours && floor($hours)>=12) echo 'selected'; ?>>PM</option>
-      </select>
-      <input type="hidden" name="bh" id="shad-hours-hidden" value="<?php echo esc_attr($hours); ?>">
-    </div>
-  </div>
+    <label>நேரம் IST (மணி.நிமிடம்)</label>
+    <input type="text" name="bh" placeholder="7.28" style="width:85px;" inputmode="decimal"
+      value="<?php if($hours){$h=floor($hours);$m=round(($hours-$h)*60);echo $h.'.'.str_pad($m,2,'0',STR_PAD_LEFT);}?>"
+      title="உதாரணம்: 7.28 = 7:28 காலை, 14.30 = 2:30 மாலை">
+    <small style="font-size:10px;color:#666;">உ.கா: 7.28</small>
 
   <!-- City autocomplete -->
   <div class="shad-form-group">
@@ -302,17 +301,19 @@ function ajai_render_shadbala($atts) {
         suggestions.innerHTML = '';
         if(!data.length){ suggestions.style.display='none'; return; }
         data.forEach(function(place){
-          var div = document.createElement('div');
-          var displayName = place.display_name.split(',').slice(0,3).join(', ');
-          div.textContent = displayName;
-          div.addEventListener('click', function(){
-            cityInput.value = displayName;
-            document.getElementById('shad-city-hidden').value = displayName;
-            document.getElementById('shad-lat').value = parseFloat(place.lat).toFixed(4);
-            document.getElementById('shad-lng').value = parseFloat(place.lon).toFixed(4);
-            suggestions.style.display = 'none';
-          });
-          suggestions.appendChild(div);
+          (function(p){
+            var div = document.createElement('div');
+            var displayName = p.display_name.split(',').slice(0,3).join(', ');
+            div.textContent = displayName;
+            div.addEventListener('click', function(){
+              cityInput.value = displayName;
+              document.getElementById('shad-city-hidden').value = displayName;
+              document.getElementById('shad-lat').value = parseFloat(p.lat).toFixed(4);
+              document.getElementById('shad-lng').value = parseFloat(p.lon).toFixed(4);
+              suggestions.style.display = 'none';
+            });
+            suggestions.appendChild(div);
+          })(place);
         });
         suggestions.style.display = 'block';
       })
