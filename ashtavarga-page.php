@@ -45,6 +45,25 @@ function ajai_render_ashtavarga($atts) {
             $data = json_decode(wp_remote_retrieve_body($response), true);
             if (empty($data['success'])) { $error = $data['error']??'error'; $data=null; }
         }
+        // Chart API - Moon rasi (ஜாதக ராசி) எடுக்க
+        $chart_resp = wp_remote_get(
+            "http://127.0.0.1:3100/api/chart?year={$year}&month={$month}&day={$day}&hours={$hours}&lat={$lat}&lng={$lng}",
+            array('timeout'=>20)
+        );
+        $moon_rasi = ''; $lagna_rasi = '';
+        if (!is_wp_error($chart_resp)) {
+            $chart_data = json_decode(wp_remote_retrieve_body($chart_resp), true);
+            if (!empty($chart_data['success'])) {
+                $lagna_rasi = $chart_data['data']['lagna']['rasiName'] ?? '';
+                foreach ($chart_data['data']['bhavas'] as $bhava) {
+                    foreach ($bhava['planets'] as $planet) {
+                        if ($planet['key'] === 'MOON') {
+                            $moon_rasi = $bhava['rasiName'];
+                        }
+                    }
+                }
+            }
+        }
     }
 
     $PLANET_ORDER = array('Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Sarva');
@@ -238,12 +257,16 @@ function ajai_render_ashtavarga($atts) {
     <div class="av-info-label">லக்னம்</div>
     <div class="av-info-val"><?php echo esc_html($lagna['rasiName']??'');?></div>
   </div>
+  <div class="av-info-card">
+    <div class="av-info-label">ஜாதக ராசி (சந்திரன்)</div>
+    <div class="av-info-val"><?php echo esc_html($moon_rasi??'');?></div>
+  </div>
   <div class="av-info-item">
     <div class="av-info-label">சர்வம் மொத்தம்</div>
     <div class="av-info-val"><?php echo esc_html(array_sum($av['Sarva']['points']??array()));?></div>
   </div>
   <div class="av-info-item">
-    <div class="av-info-label">சிறந்த ராசி</div>
+    <div class="av-info-label">அதிக பரல் பெற்ற ராசி</div>
     <?php
     $sarva_pts = $av['Sarva']['points'] ?? array_fill(0,12,0);
     $max_idx = array_search(max($sarva_pts), $sarva_pts);
@@ -251,7 +274,7 @@ function ajai_render_ashtavarga($atts) {
     <div class="av-info-val" style="color:var(--green);"><?php echo esc_html($rasi_names[$max_idx]??'');?> (<?php echo esc_html(max($sarva_pts));?>)</div>
   </div>
   <div class="av-info-item">
-    <div class="av-info-label">பலவீன ராசி</div>
+    <div class="av-info-label">குறைந்த பரல் பெற்ற ராசி</div>
     <?php $min_idx = array_search(min($sarva_pts), $sarva_pts); ?>
     <div class="av-info-val" style="color:#C62828;"><?php echo esc_html($rasi_names[$min_idx]??'');?> (<?php echo esc_html(min($sarva_pts));?>)</div>
   </div>
@@ -302,7 +325,7 @@ function ajai_render_ashtavarga($atts) {
 
 <!-- LEGEND -->
 <div class="av-legend">
-  <div class="av-leg-item"><div class="av-leg-dot av-high"></div> சிறந்தது (≥5 / சர்வம்≥30)</div>
+  <div class="av-leg-item"><div class="av-leg-dot av-high"></div> அதிக பரல் (≥5 / சர்வம்≥30)</div>
   <div class="av-leg-item"><div class="av-leg-dot av-mid"></div> நல்லது (4 / சர்வம்≥25)</div>
   <div class="av-leg-item"><div class="av-leg-dot av-ok"></div> சாதாரணம் (3)</div>
   <div class="av-leg-item"><div class="av-leg-dot av-low"></div> பலவீனம் (≤2)</div>
@@ -390,34 +413,25 @@ avc.addEventListener('input',function(){
     .then(function(r){return r.json();}).then(function(data){
       avs.innerHTML='';if(!data.length){avs.style.display='none';return;}
       data.forEach(function(p){
-        var d=document.createElement('div');
-        d.textContent=p.display_name.split(',').slice(0,3).join(', ');
-        d.addEventListener('click',function(){
-          avc.value=d.textContent;
-          document.getElementById('av-city-h').value=d.textContent;
-          document.getElementById('av-lat').value=parseFloat(p.lat).toFixed(4);
-          document.getElementById('av-lng').value=parseFloat(p.lon).toFixed(4);
-          avs.style.display='none';
-        });
-        avs.appendChild(d);
+        (function(place){
+          var d=document.createElement('div');
+          d.textContent=place.display_name.split(',').slice(0,3).join(', ');
+          d.addEventListener('click',function(){
+            avc.value=d.textContent;
+            document.getElementById('av-city-h').value=d.textContent;
+            document.getElementById('av-lat').value=parseFloat(place.lat).toFixed(4);
+            document.getElementById('av-lng').value=parseFloat(place.lon).toFixed(4);
+            avs.style.display='none';
+          });
+          avs.appendChild(d);
+        })(p);
       });
       avs.style.display='block';
     });
   },400);
 });
 document.addEventListener('click',function(e){if(!avc.contains(e.target)&&!avs.contains(e.target))avs.style.display='none';});
-document.getElementById('av-form').addEventListener('submit',function(e){
-  var hr = document.getElementById('av-hr').value;
-  var mn = document.getElementById('av-mn').value;
-  var ap = document.getElementById('av-ap').value;
-  if(hr && mn){
-    var h=parseInt(hr)||0;
-    var m=parseInt(mn)||0;
-    if(ap==='PM'&&h!==12)h+=12;
-    if(ap==='AM'&&h===12)h=0;
-    document.getElementById('av-hh').value=(h+m/60).toFixed(4);
-  }
-});
+// Submit: bh field directly has decimal value - no conversion needed
 </script>
 
 <?php endif;?>
